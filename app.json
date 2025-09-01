@@ -1,7 +1,7 @@
 {
   "name": "Azure DevOps API Server",
   "description": "Comprehensive REST API server for Azure DevOps integration with Microsoft Copilot Studio",
-  "repository": "https://github.com/your-username/azuredevops-api-server",
+  "repository": "https://github.com/KunalTiwariGitCE/azuredevops-api-server",
   "logo": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azuredevops/azuredevops-original.svg",
   "keywords": ["azure-devops", "api", "copilot-studio", "nodejs"],
   "image": "heroku/nodejs",

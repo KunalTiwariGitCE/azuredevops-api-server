@@ -1,7 +1,7 @@
 # 🚀 Azure DevOps REST API Server for Microsoft Copilot Studio
 
-[![Deploy to Railway](https://railway.app/button.svg)](https://railway.app/template/your-template)
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+[![Deploy to Railway](https://railway.app/button.svg)](https://railway.app/template/https://github.com/KunalTiwariGitCE/azuredevops-api-server)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/KunalTiwariGitCE/azuredevops-api-server)
 
 A comprehensive REST API server that exposes all Azure DevOps operations for integration with Microsoft Copilot Studio and other applications.
 
@@ -14,9 +14,10 @@ A comprehensive REST API server that exposes all Azure DevOps operations for int
 
 ## 🌐 Live Demo
 
-- **API Base URL**: `https://your-username.github.io/azuredevops-api-server`
-- **Health Check**: `https://your-username.github.io/azuredevops-api-server/health`
-- **API Documentation**: `https://your-username.github.io/azuredevops-api-server/api`
+- **GitHub Repository**: `https://github.com/KunalTiwariGitCE/azuredevops-api-server`
+- **API Base URL**: Deploy using one of the options below
+- **Health Check**: `https://your-deployed-url/health`
+- **API Documentation**: `https://your-deployed-url/api`
 
 ## 📡 Available Endpoints
 
@@ -68,7 +69,7 @@ A comprehensive REST API server that exposes all Azure DevOps operations for int
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/azuredevops-api-server.git
+git clone https://github.com/KunalTiwariGitCE/azuredevops-api-server.git
 cd azuredevops-api-server
 
 # Install dependencies

@@ -1,0 +1,33 @@
+{
+  "name": "Azure DevOps API Server",
+  "description": "Comprehensive REST API server for Azure DevOps integration with Microsoft Copilot Studio",
+  "repository": "https://github.com/your-username/azuredevops-api-server",
+  "logo": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azuredevops/azuredevops-original.svg",
+  "keywords": ["azure-devops", "api", "copilot-studio", "nodejs"],
+  "image": "heroku/nodejs",
+  "stack": "heroku-22",
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "ADO_ORGANIZATION": {
+      "description": "Your Azure DevOps organization name",
+      "value": "PwCD365CE"
+    },
+    "NODE_ENV": {
+      "description": "Node environment", 
+      "value": "production"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "free"
+    }
+  },
+  "scripts": {
+    "postdeploy": "echo 'Azure DevOps API Server deployed successfully!'"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "name": "azuredevops-api-server",
+  "builds": [
+    {
+      "src": "dist/comprehensive-api-server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/dist/comprehensive-api-server.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "ADO_ORGANIZATION": "PwCD365CE"
+  }
+}

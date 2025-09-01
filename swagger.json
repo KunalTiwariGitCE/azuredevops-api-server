@@ -27,6 +27,16 @@
                 "service": {"type": "string"}
               }
             }
+          },
+          "500": {
+            "description": "Service is unhealthy",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "string"},
+                "error": {"type": "string"}
+              }
+            }
           }
         }
       }
@@ -38,7 +48,7 @@
         "description": "Get all Azure DevOps projects",
         "responses": {
           "200": {
-            "description": "List of projects",
+            "description": "List of projects retrieved successfully",
             "schema": {
               "type": "object",
               "properties": {
@@ -56,7 +66,18 @@
                       "visibility": {"type": "string"}
                     }
                   }
-                }
+                },
+                "count": {"type": "integer"}
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to fetch projects",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean"},
+                "error": {"type": "string"}
               }
             }
           }
@@ -83,7 +104,7 @@
                 },
                 "type": {
                   "type": "string",
-                  "description": "Work item type (Task, Bug, User Story)",
+                  "description": "Work item type",
                   "enum": ["Task", "Bug", "User Story", "Feature"]
                 },
                 "title": {
@@ -116,6 +137,26 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad request - missing required fields",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean"},
+                "error": {"type": "string"}
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to create work item",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean"},
+                "error": {"type": "string"}
+              }
+            }
           }
         }
       },
@@ -134,7 +175,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Work item details",
+            "description": "Work item details retrieved successfully",
             "schema": {
               "type": "object",
               "properties": {
@@ -151,6 +192,26 @@
                     "url": {"type": "string"}
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - work item ID is required",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean"},
+                "error": {"type": "string"}
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve work item",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean"},
+                "error": {"type": "string"}
               }
             }
           }

@@ -18,7 +18,7 @@ module.exports = async function (context, req) {
     }
     
     try {
-        // Return the swagger specification
+        // Return the complete swagger specification with all required responses
         const swaggerSpec = {
             "swagger": "2.0",
             "info": {
@@ -48,6 +48,16 @@ module.exports = async function (context, req) {
                                         "service": {"type": "string"}
                                     }
                                 }
+                            },
+                            "500": {
+                                "description": "Service is unhealthy",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {"type": "string"},
+                                        "error": {"type": "string"}
+                                    }
+                                }
                             }
                         }
                     }
@@ -59,7 +69,7 @@ module.exports = async function (context, req) {
                         "description": "Get all Azure DevOps projects",
                         "responses": {
                             "200": {
-                                "description": "List of projects",
+                                "description": "List of projects retrieved successfully",
                                 "schema": {
                                     "type": "object",
                                     "properties": {
@@ -77,7 +87,18 @@ module.exports = async function (context, req) {
                                                     "visibility": {"type": "string"}
                                                 }
                                             }
-                                        }
+                                        },
+                                        "count": {"type": "integer"}
+                                    }
+                                }
+                            },
+                            "500": {
+                                "description": "Failed to fetch projects",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "error": {"type": "string"}
                                     }
                                 }
                             }
@@ -137,6 +158,26 @@ module.exports = async function (context, req) {
                                         }
                                     }
                                 }
+                            },
+                            "400": {
+                                "description": "Bad request - missing required fields",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "error": {"type": "string"}
+                                    }
+                                }
+                            },
+                            "500": {
+                                "description": "Failed to create work item",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "error": {"type": "string"}
+                                    }
+                                }
                             }
                         }
                     },
@@ -155,7 +196,7 @@ module.exports = async function (context, req) {
                         ],
                         "responses": {
                             "200": {
-                                "description": "Work item details",
+                                "description": "Work item details retrieved successfully",
                                 "schema": {
                                     "type": "object",
                                     "properties": {
@@ -174,11 +215,37 @@ module.exports = async function (context, req) {
                                         }
                                     }
                                 }
+                            },
+                            "400": {
+                                "description": "Bad request - work item ID is required",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "error": {"type": "string"}
+                                    }
+                                }
+                            },
+                            "500": {
+                                "description": "Failed to retrieve work item",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {"type": "boolean"},
+                                        "error": {"type": "string"}
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
+            },
+            "definitions": {},
+            "parameters": {},
+            "responses": {},
+            "securityDefinitions": {},
+            "security": [],
+            "tags": []
         };
 
         context.res = {

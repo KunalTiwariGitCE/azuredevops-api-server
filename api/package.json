@@ -1,0 +1,13 @@
+{
+  "name": "azure-devops-api-functions",
+  "version": "1.0.0",
+  "description": "Azure Functions for Azure DevOps API",
+  "main": "index.js",
+  "dependencies": {
+    "@azure/identity": "^4.0.1",
+    "axios": "^1.6.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -235,7 +235,7 @@ async function getAllProjectWorkItems(project, accessToken) {
             query: `SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints], [Microsoft.VSTS.Common.Priority] FROM WorkItems WHERE [System.TeamProject] = '${project}' ORDER BY [System.WorkItemType], [System.State]`
         };
         
-        const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken);
+        const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken, project);
         
         if (wiqlResult.workItems.length === 0) {
             console.log(`No work items found for project: ${project}`);
@@ -271,7 +271,7 @@ async function getSprintWorkItems(project, iterationId, accessToken) {
             query: `SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints], [Microsoft.VSTS.Common.Priority] FROM WorkItems WHERE [System.IterationPath] UNDER '${project}' ORDER BY [System.WorkItemType], [System.State]`
         };
         
-        const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken);
+        const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken, project);
         
         if (wiqlResult.workItems.length === 0) {
             return [];
@@ -290,14 +290,22 @@ async function getSprintWorkItems(project, iterationId, accessToken) {
 }
 
 // Function to make WIQL (Work Item Query Language) calls
-async function callAzureDevOpsWiql(wiql, accessToken) {
+async function callAzureDevOpsWiql(wiql, accessToken, project = null) {
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify(wiql);
+        
+        // Use project-specific endpoint if project is provided
+        const apiPath = project ? 
+            `/${organization}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.1-preview.2` :
+            `/${organization}/_apis/wit/wiql?api-version=7.1-preview.2`;
+        
+        console.log(`Making WIQL request to: ${apiPath}`);
+        console.log(`WIQL Query: ${wiql.query}`);
         
         const options = {
             hostname: 'dev.azure.com',
             port: 443,
-            path: `/${organization}/_apis/wit/wiql?api-version=7.1-preview.2`,
+            path: apiPath,
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -311,20 +319,25 @@ async function callAzureDevOpsWiql(wiql, accessToken) {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
+                console.log(`WIQL Response Status: ${res.statusCode}`);
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     try {
                         const result = JSON.parse(data);
+                        console.log(`WIQL Response: Found ${result.workItems?.length || 0} work items`);
                         resolve(result);
                     } catch (error) {
+                        console.log(`WIQL Parse Error: ${error.message}`);
                         reject(new Error('Failed to parse WIQL response'));
                     }
                 } else {
+                    console.log(`WIQL Error Response: ${data}`);
                     reject(new Error(`WIQL query failed with status ${res.statusCode}: ${data}`));
                 }
             });
         });
 
         req.on('error', (error) => {
+            console.log(`WIQL Request Error: ${error.message}`);
             reject(error);
         });
 

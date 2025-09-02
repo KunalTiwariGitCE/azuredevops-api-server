@@ -335,6 +335,81 @@
           }
         }
       }
+    },
+    "/sprint-summary": {
+      "get": {
+        "operationId": "GetSprintSummary",
+        "summary": "Generate sprint summary report",
+        "description": "Get comprehensive sprint summary with work items analysis, completion rates, and progress tracking",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "description": "Project name (defaults to NHG)"
+          },
+          {
+            "name": "sprintId", 
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "description": "Specific sprint ID (defaults to current active sprint)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sprint summary report generated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "sprintName": {"type": "string"},
+                    "sprintId": {"type": "string"},
+                    "startDate": {"type": "string"},
+                    "finishDate": {"type": "string"},
+                    "totalWorkItems": {"type": "integer"},
+                    "completionRate": {"type": "integer"},
+                    "workItemsByType": {"type": "object"},
+                    "workItemsByState": {"type": "object"},
+                    "storyPointsSummary": {
+                      "type": "object",
+                      "properties": {
+                        "total": {"type": "integer"},
+                        "completed": {"type": "integer"},
+                        "remaining": {"type": "integer"}
+                      }
+                    },
+                    "sprintProgress": {
+                      "type": "object", 
+                      "properties": {
+                        "totalDays": {"type": "integer"},
+                        "daysElapsed": {"type": "integer"},
+                        "daysRemaining": {"type": "integer"},
+                        "percentComplete": {"type": "integer"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to generate sprint summary",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {"type": "boolean"},
+                "error": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {},

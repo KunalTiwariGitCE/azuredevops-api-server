@@ -195,6 +195,242 @@ async function createWorkItemInAzureDevOps(project, workItemType, title, descrip
     });
 }
 
+// Function to generate comprehensive sprint summary
+async function generateSprintSummary(project, sprintId, accessToken) {
+    console.log(`Generating comprehensive sprint summary for ${project}`);
+    
+    try {
+        // Get iterations (sprints) 
+        const iterations = await callAzureDevOpsAPI(`work/teamsettings/iterations?api-version=7.1-preview.1`, accessToken);
+        
+        let currentSprint;
+        if (sprintId) {
+            // Find specific sprint by ID
+            currentSprint = iterations.value.find(iteration => iteration.id === sprintId);
+        } else {
+            // Find current active sprint
+            const now = new Date();
+            currentSprint = iterations.value.find(iteration => {
+                const startDate = new Date(iteration.attributes.startDate);
+                const finishDate = new Date(iteration.attributes.finishDate);
+                return now >= startDate && now <= finishDate;
+            }) || iterations.value[iterations.value.length - 1]; // Fallback to latest sprint
+        }
+        
+        if (!currentSprint) {
+            throw new Error('No active sprint found');
+        }
+        
+        console.log(`Analyzing sprint: ${currentSprint.name}`);
+        
+        // Get work items for the sprint
+        const sprintWorkItems = await getSprintWorkItems(project, currentSprint.id, accessToken);
+        
+        // Analyze work items
+        const summary = analyzeSprintWorkItems(sprintWorkItems, currentSprint);
+        
+        return summary;
+        
+    } catch (error) {
+        console.log('Error generating sprint summary:', error.message);
+        throw error;
+    }
+}
+
+// Function to get work items for a specific sprint
+async function getSprintWorkItems(project, iterationId, accessToken) {
+    try {
+        // Get work items in the iteration using WIQL
+        const wiql = {
+            query: `SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints], [Microsoft.VSTS.Common.Priority] FROM WorkItems WHERE [System.IterationPath] UNDER '${project}' ORDER BY [System.WorkItemType], [System.State]`
+        };
+        
+        const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken);
+        
+        if (wiqlResult.workItems.length === 0) {
+            return [];
+        }
+        
+        // Get detailed work item information
+        const workItemIds = wiqlResult.workItems.map(wi => wi.id);
+        const workItemDetails = await callAzureDevOpsAPI(`wit/workitems?ids=${workItemIds.join(',')}&$expand=all&api-version=7.1-preview.3`, accessToken);
+        
+        return workItemDetails.value;
+        
+    } catch (error) {
+        console.log('Error getting sprint work items:', error.message);
+        return [];
+    }
+}
+
+// Function to make WIQL (Work Item Query Language) calls
+async function callAzureDevOpsWiql(wiql, accessToken) {
+    return new Promise((resolve, reject) => {
+        const postData = JSON.stringify(wiql);
+        
+        const options = {
+            hostname: 'dev.azure.com',
+            port: 443,
+            path: `/${organization}/_apis/wit/wiql?api-version=7.1-preview.2`,
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData),
+                'User-Agent': 'Azure-DevOps-API-Server/1.0'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    try {
+                        const result = JSON.parse(data);
+                        resolve(result);
+                    } catch (error) {
+                        reject(new Error('Failed to parse WIQL response'));
+                    }
+                } else {
+                    reject(new Error(`WIQL query failed with status ${res.statusCode}: ${data}`));
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            reject(error);
+        });
+
+        req.setTimeout(15000, () => {
+            req.destroy();
+            reject(new Error('WIQL request timeout'));
+        });
+
+        req.write(postData);
+        req.end();
+    });
+}
+
+// Function to analyze sprint work items and create summary
+function analyzeSprintWorkItems(workItems, sprint) {
+    const summary = {
+        sprintName: sprint.name,
+        sprintId: sprint.id,
+        startDate: sprint.attributes.startDate,
+        finishDate: sprint.attributes.finishDate,
+        totalWorkItems: workItems.length,
+        workItemsByType: {},
+        workItemsByState: {},
+        workItemsByPriority: {},
+        assignmentSummary: {},
+        storyPointsSummary: {
+            total: 0,
+            completed: 0,
+            remaining: 0
+        },
+        completionRate: 0,
+        topPriorityItems: [],
+        blockedItems: [],
+        recentlyCompleted: []
+    };
+    
+    // Analyze each work item
+    workItems.forEach(workItem => {
+        const fields = workItem.fields;
+        const workItemType = fields['System.WorkItemType'];
+        const state = fields['System.State'];
+        const assignedTo = fields['System.AssignedTo']?.displayName || 'Unassigned';
+        const priority = fields['Microsoft.VSTS.Common.Priority'] || 'No Priority';
+        const storyPoints = parseInt(fields['Microsoft.VSTS.Scheduling.StoryPoints']) || 0;
+        const title = fields['System.Title'];
+        
+        // Count by type
+        summary.workItemsByType[workItemType] = (summary.workItemsByType[workItemType] || 0) + 1;
+        
+        // Count by state
+        summary.workItemsByState[state] = (summary.workItemsByState[state] || 0) + 1;
+        
+        // Count by priority
+        summary.workItemsByPriority[priority] = (summary.workItemsByPriority[priority] || 0) + 1;
+        
+        // Assignment summary
+        summary.assignmentSummary[assignedTo] = (summary.assignmentSummary[assignedTo] || 0) + 1;
+        
+        // Story points analysis
+        summary.storyPointsSummary.total += storyPoints;
+        
+        if (state === 'Done' || state === 'Closed' || state === 'Resolved') {
+            summary.storyPointsSummary.completed += storyPoints;
+        } else {
+            summary.storyPointsSummary.remaining += storyPoints;
+        }
+        
+        // High priority items
+        if (priority === 1 || priority === '1') {
+            summary.topPriorityItems.push({
+                id: workItem.id,
+                title: title,
+                state: state,
+                assignedTo: assignedTo,
+                url: workItem._links.html.href
+            });
+        }
+        
+        // Recently completed items (last 3 days)
+        const changedDate = new Date(fields['System.ChangedDate']);
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        
+        if ((state === 'Done' || state === 'Closed') && changedDate > threeDaysAgo) {
+            summary.recentlyCompleted.push({
+                id: workItem.id,
+                title: title,
+                completedDate: fields['System.ChangedDate'],
+                assignedTo: assignedTo,
+                url: workItem._links.html.href
+            });
+        }
+        
+        // Check for blocked items
+        const tags = fields['System.Tags'] || '';
+        if (tags.toLowerCase().includes('blocked') || state.toLowerCase().includes('blocked')) {
+            summary.blockedItems.push({
+                id: workItem.id,
+                title: title,
+                state: state,
+                assignedTo: assignedTo,
+                url: workItem._links.html.href
+            });
+        }
+    });
+    
+    // Calculate completion rate
+    const completedItems = (summary.workItemsByState['Done'] || 0) + 
+                          (summary.workItemsByState['Closed'] || 0) + 
+                          (summary.workItemsByState['Resolved'] || 0);
+    
+    summary.completionRate = summary.totalWorkItems > 0 ? 
+        Math.round((completedItems / summary.totalWorkItems) * 100) : 0;
+    
+    // Sprint progress
+    const now = new Date();
+    const startDate = new Date(sprint.attributes.startDate);
+    const finishDate = new Date(sprint.attributes.finishDate);
+    const totalDays = Math.ceil((finishDate - startDate) / (1000 * 60 * 60 * 24));
+    const daysElapsed = Math.ceil((now - startDate) / (1000 * 60 * 60 * 24));
+    const daysRemaining = Math.max(0, Math.ceil((finishDate - now) / (1000 * 60 * 60 * 24)));
+    
+    summary.sprintProgress = {
+        totalDays: totalDays,
+        daysElapsed: Math.max(0, daysElapsed),
+        daysRemaining: daysRemaining,
+        percentComplete: totalDays > 0 ? Math.round((daysElapsed / totalDays) * 100) : 0
+    };
+    
+    return summary;
+}
+
 // Function to make Azure DevOps API calls
 async function callAzureDevOpsAPI(endpoint, accessToken) {
     return new Promise((resolve, reject) => {
@@ -442,6 +678,44 @@ const server = http.createServer((req, res) => {
                 };
 
                 res.writeHead(404);
+                res.end(JSON.stringify(response));
+            });
+        return;
+    }
+
+    // Sprint Summary Report
+    if (path === '/api/sprint-summary' && req.method === 'GET') {
+        const project = parsedUrl.query.project || 'NHG';
+        const sprintId = parsedUrl.query.sprintId;
+        
+        console.log(`Generating sprint summary report for project: ${project}`);
+        
+        // Try to get sprint summary from Azure DevOps
+        getAccessToken()
+            .then(accessToken => {
+                return generateSprintSummary(project, sprintId, accessToken);
+            })
+            .then(sprintSummary => {
+                const response = {
+                    success: true,
+                    data: sprintSummary,
+                    message: `Sprint summary generated for ${organization}/${project}`
+                };
+
+                console.log(`Sprint summary generated for ${project}: ${sprintSummary.sprintName}`);
+                res.writeHead(200);
+                res.end(JSON.stringify(response));
+            })
+            .catch(error => {
+                console.log('Sprint summary generation failed:', error.message);
+                
+                const response = {
+                    success: false,
+                    error: `Failed to generate sprint summary: ${error.message}`,
+                    message: "Sprint data retrieval failed"
+                };
+
+                res.writeHead(500);
                 res.end(JSON.stringify(response));
             });
         return;

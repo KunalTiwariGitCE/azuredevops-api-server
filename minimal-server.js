@@ -8,6 +8,8 @@ const organization = 'PwCD365CE';
 // Function to get Azure access token using Managed Identity
 async function getAccessToken() {
     return new Promise((resolve, reject) => {
+        console.log('Attempting to get access token from Managed Identity...');
+        
         // Try Managed Identity endpoint first
         const options = {
             hostname: '169.254.169.254',
@@ -17,32 +19,37 @@ async function getAccessToken() {
             headers: {
                 'Metadata': 'true'
             },
-            timeout: 5000
+            timeout: 10000
         };
 
         const req = http.request(options, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
+                console.log(`Managed Identity response: ${res.statusCode}, data: ${data}`);
                 if (res.statusCode === 200) {
                     try {
                         const token = JSON.parse(data);
+                        console.log('Successfully got access token from Managed Identity');
                         resolve(token.access_token);
                     } catch (error) {
+                        console.log('Failed to parse token response:', error.message);
                         reject(new Error('Failed to parse token response'));
                     }
                 } else {
-                    reject(new Error('Managed Identity not available - using mock data'));
+                    console.log(`Managed Identity failed with status ${res.statusCode}: ${data}`);
+                    reject(new Error(`Managed Identity returned ${res.statusCode} - using mock data`));
                 }
             });
         });
 
-        req.on('error', () => {
-            // Fallback to mock data when not in Azure environment
-            reject(new Error('Not in Azure environment - using mock data'));
+        req.on('error', (error) => {
+            console.log('Managed Identity request error:', error.message);
+            reject(new Error('Managed Identity endpoint not accessible - using mock data'));
         });
 
         req.on('timeout', () => {
+            console.log('Managed Identity request timeout');
             req.destroy();
             reject(new Error('Token request timeout - using mock data'));
         });

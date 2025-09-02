@@ -120,6 +120,79 @@ function tryAlternativeAuth(resolve, reject) {
     }
 }
 
+// Function to create work item in Azure DevOps
+async function createWorkItemInAzureDevOps(project, workItemType, title, description, accessToken) {
+    return new Promise((resolve, reject) => {
+        console.log(`Creating ${workItemType} in project ${project}: ${title}`);
+        
+        // Prepare the work item data as JSON Patch
+        const workItemData = [
+            {
+                "op": "add",
+                "path": "/fields/System.Title",
+                "value": title
+            }
+        ];
+        
+        if (description) {
+            workItemData.push({
+                "op": "add",
+                "path": "/fields/System.Description",
+                "value": description
+            });
+        }
+        
+        const postData = JSON.stringify(workItemData);
+        
+        const options = {
+            hostname: 'dev.azure.com',
+            port: 443,
+            path: `/${organization}/${project}/_apis/wit/workitems/$${workItemType}?api-version=7.1-preview.3`,
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json-patch+json',
+                'Content-Length': Buffer.byteLength(postData),
+                'User-Agent': 'Azure-DevOps-API-Server/1.0'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                console.log(`Work item creation response: ${res.statusCode}`);
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    try {
+                        const result = JSON.parse(data);
+                        console.log(`Work item created successfully: ID ${result.id}`);
+                        resolve(result);
+                    } catch (error) {
+                        console.log('Failed to parse work item creation response:', error.message);
+                        reject(new Error('Failed to parse work item creation response'));
+                    }
+                } else {
+                    console.log(`Work item creation failed with status ${res.statusCode}: ${data}`);
+                    reject(new Error(`Work item creation failed with status ${res.statusCode}: ${data}`));
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            console.log('Work item creation request error:', error.message);
+            reject(error);
+        });
+
+        req.setTimeout(15000, () => {
+            req.destroy();
+            reject(new Error('Work item creation request timeout'));
+        });
+
+        req.write(postData);
+        req.end();
+    });
+}
+
 // Function to make Azure DevOps API calls
 async function callAzureDevOpsAPI(endpoint, accessToken) {
     return new Promise((resolve, reject) => {
@@ -263,20 +336,58 @@ const server = http.createServer((req, res) => {
         req.on('end', () => {
             try {
                 const data = JSON.parse(body);
-                const response = {
-                    success: true,
-                    data: {
-                        id: 12345,
-                        title: data.title || 'Sample Work Item',
-                        state: 'New',
-                        assignedTo: 'user@example.com',
-                        createdDate: new Date().toISOString(),
-                        url: `https://dev.azure.com/PwCD365CE/${data.project || 'Project'}/_workitems/edit/12345`
-                    },
-                    message: "Mock data - work item created successfully!"
-                };
-                res.writeHead(201);
-                res.end(JSON.stringify(response));
+                console.log('Creating work item:', data);
+                
+                // Try to create real work item in Azure DevOps
+                getAccessToken()
+                    .then(accessToken => {
+                        const project = data.project || 'NHG';
+                        const workItemType = data.type || 'User Story';
+                        const title = data.title;
+                        const description = data.description;
+                        
+                        if (!title) {
+                            res.writeHead(400);
+                            res.end(JSON.stringify({ 
+                                success: false, 
+                                error: 'Title is required for work item creation' 
+                            }));
+                            return;
+                        }
+                        
+                        return createWorkItemInAzureDevOps(project, workItemType, title, description, accessToken);
+                    })
+                    .then(workItem => {
+                        const response = {
+                            success: true,
+                            data: {
+                                id: workItem.id,
+                                title: workItem.fields['System.Title'],
+                                state: workItem.fields['System.State'],
+                                assignedTo: workItem.fields['System.AssignedTo']?.displayName,
+                                createdDate: workItem.fields['System.CreatedDate'],
+                                url: workItem._links.html.href
+                            },
+                            message: `Real work item created in ${organization} organization`
+                        };
+                        
+                        console.log(`Created work item ${workItem.id}: ${workItem.fields['System.Title']}`);
+                        res.writeHead(201);
+                        res.end(JSON.stringify(response));
+                    })
+                    .catch(error => {
+                        console.log('Work item creation failed:', error.message);
+                        
+                        // Fallback to mock data if real creation fails
+                        const response = {
+                            success: false,
+                            error: `Failed to create work item: ${error.message}`,
+                            message: "Authentication or API call failed"
+                        };
+                        
+                        res.writeHead(500);
+                        res.end(JSON.stringify(response));
+                    });
             } catch (error) {
                 res.writeHead(400);
                 res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
@@ -294,23 +405,43 @@ const server = http.createServer((req, res) => {
             return;
         }
 
-        const response = {
-            success: true,
-            data: {
-                id: parseInt(workItemId),
-                title: 'Sample Work Item',
-                description: 'This is a sample work item for testing',
-                state: 'Active',
-                assignedTo: 'user@example.com',
-                createdDate: '2024-01-01T10:00:00Z',
-                changedDate: new Date().toISOString(),
-                url: `https://dev.azure.com/PwCD365CE/Project/_workitems/edit/${workItemId}`
-            },
-            message: "Mock data - work item retrieved successfully!"
-        };
+        // Try to get real work item from Azure DevOps
+        getAccessToken()
+            .then(accessToken => {
+                return callAzureDevOpsAPI(`wit/workitems/${workItemId}?api-version=7.1-preview.3`, accessToken);
+            })
+            .then(workItem => {
+                const response = {
+                    success: true,
+                    data: {
+                        id: workItem.id,
+                        title: workItem.fields['System.Title'],
+                        description: workItem.fields['System.Description'] || '',
+                        state: workItem.fields['System.State'],
+                        assignedTo: workItem.fields['System.AssignedTo']?.displayName || 'Unassigned',
+                        createdDate: workItem.fields['System.CreatedDate'],
+                        changedDate: workItem.fields['System.ChangedDate'],
+                        url: workItem._links.html.href
+                    },
+                    message: `Real work item from ${organization} organization`
+                };
 
-        res.writeHead(200);
-        res.end(JSON.stringify(response));
+                console.log(`Retrieved work item ${workItem.id}: ${workItem.fields['System.Title']}`);
+                res.writeHead(200);
+                res.end(JSON.stringify(response));
+            })
+            .catch(error => {
+                console.log('Work item retrieval failed:', error.message);
+                
+                const response = {
+                    success: false,
+                    error: `Failed to retrieve work item: ${error.message}`,
+                    message: "Work item not found or authentication failed"
+                };
+
+                res.writeHead(404);
+                res.end(JSON.stringify(response));
+            });
         return;
     }
 

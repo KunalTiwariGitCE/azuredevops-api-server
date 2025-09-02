@@ -1,171 +1,163 @@
-# 🚀 Azure DevOps REST API Server for Microsoft Copilot Studio
+# 🚀 Azure DevOps API Server for Microsoft Copilot Studio
 
-[![Deploy to Railway](https://railway.app/button.svg)](https://railway.app/template/https://github.com/KunalTiwariGitCE/azuredevops-api-server)
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/KunalTiwariGitCE/azuredevops-api-server)
+A production-ready REST API server that integrates Azure DevOps with Microsoft Copilot Studio, enabling natural language interaction with your DevOps workflows.
 
-A comprehensive REST API server that exposes all Azure DevOps operations for integration with Microsoft Copilot Studio and other applications.
+## 🌐 Live Production Server
 
-## ✨ Features
+- **Base URL**: `https://azuredevops-api-live.azurewebsites.net`
+- **Organization**: `PwCD365CE`
+- **Project**: `NHG`
+- **Status**: ✅ Active and monitored
 
-- **Complete Azure DevOps Integration**: All operations from the Microsoft Azure DevOps MCP server
-- **Microsoft Copilot Studio Ready**: Standard REST endpoints for custom connectors
-- **Production Ready**: CORS, error handling, logging, health checks
-- **Comprehensive Coverage**: Projects, work items, repositories, builds, releases, wikis, search
+## ✨ Verified Working Features
 
-## 🌐 Live Demo
+### 1. **List Projects** - `GET /api/projects`
+- Returns all Azure DevOps projects in your organization
+- Includes project ID, name, description, and URLs
+- **Real data** from live Azure DevOps instance
 
-- **GitHub Repository**: `https://github.com/KunalTiwariGitCE/azuredevops-api-server`
-- **API Base URL**: Deploy using one of the options below
-- **Health Check**: `https://your-deployed-url/health`
-- **API Documentation**: `https://your-deployed-url/api`
+### 2. **Create Work Item** - `POST /api/workitems`
+- Create Tasks, Bugs, User Stories, Features
+- **Returns real Azure DevOps URLs** for created items
+- Supports rich descriptions and metadata
 
-## 📡 Available Endpoints
+### 3. **Get Work Item** - `GET /api/workitems?id={id}`
+- Retrieve complete work item details
+- Real-time data synchronization
+- Full work item history and status
 
-### Core Domain
-- `GET /api/projects` - List all projects
-- `GET /api/projects/{project}/teams` - List teams in project
-- `GET /api/projects/{project}` - Get project details
+### 4. **Health Check** - `GET /api/health`
+- Monitor API server status and version
+- Service uptime and performance metrics
 
-### Work Items Domain  
-- `GET /api/projects/{project}/workitems` - List work items
-- `GET /api/workitems/{id}` - Get work item details
-- `POST /api/workitems` - Create work item
-- `PUT /api/workitems/{id}` - Update work item
+## 🎯 Microsoft Copilot Studio Integration
 
-### Repository Domain
-- `GET /api/projects/{project}/repositories` - List repositories
-- `GET /api/repositories/{repo}/branches` - List branches
-- `GET /api/repositories/{repo}/pullrequests` - List pull requests
+### Quick Setup
+1. **Import the Custom Connector**:
+   - Use `azure-devops-working-swagger.json` from this repository
+   - Base URL: `https://azuredevops-api-live.azurewebsites.net`
 
-### Build & Release Domain
-- `GET /api/projects/{project}/builds` - List builds
-- `GET /api/projects/{project}/pipelines` - List pipelines
-- `GET /api/projects/{project}/releases` - List releases
+2. **Available Actions in Copilot**:
+   - ✅ **ListProjects**
+   - ✅ **CreateWorkItem** 
+   - ✅ **GetWorkItem**
+   - ✅ **HealthCheck**
 
-### Wiki & Search Domain
-- `GET /api/projects/{project}/wikis` - List wikis
-- `GET /api/search/code` - Search code
-- `GET /api/search/workitems` - Search work items
+3. **Natural Language Examples**:
+   - *"List all my Azure DevOps projects"*
+   - *"Create a bug called 'Login issue' in the NHG project"*
+   - *"Get details for work item 148"*
+   - *"Show me project information"*
 
-## 🚀 Quick Deploy
-
-### Option 1: Railway (Recommended)
-1. Click the Railway deploy button above
-2. Set environment variable: `ADO_ORGANIZATION=your-org-name`
-3. Deploy automatically
-
-### Option 2: Render
-1. Fork this repository
-2. Connect to Render
-3. Set build command: `npm run build`
-4. Set start command: `npm start`
-
-### Option 3: Heroku
-1. Click the Heroku deploy button above
-2. Set config vars for your Azure DevOps organization
-3. Deploy
-
-## 🛠️ Local Development
-
-```bash
-# Clone repository
-git clone https://github.com/KunalTiwariGitCE/azuredevops-api-server.git
-cd azuredevops-api-server
-
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Start server
-npm run start-comprehensive -- YourOrgName --port 8080
-```
-
-## 🔗 Microsoft Copilot Studio Integration
-
-### Step 1: Create Custom Connector
-1. Go to https://copilotstudio.microsoft.com
-2. Navigate to **Data > Connectors > New connector**
-3. Use the deployed API URL as the host
-
-### Step 2: Configure Actions
-Add these key actions to your connector:
-- **ListProjects**: `GET /api/projects`
-- **CreateWorkItem**: `POST /api/workitems`
-- **ListWorkItems**: `GET /api/projects/{project}/workitems`
-- **GetWorkItem**: `GET /api/workitems/{id}`
-
-### Step 3: Create Copilot Topics
-Example topics:
-- "Show my projects" → Call ListProjects
-- "Create work item" → Call CreateWorkItem
-- "List tasks in [project]" → Call ListWorkItems
-
-## ⚙️ Configuration
-
-### Environment Variables
-- `ADO_ORGANIZATION` - Your Azure DevOps organization name
-- `PORT` - Server port (default: 8080)
-- `NODE_ENV` - Environment (production/development)
-
-### Authentication
-The server uses Azure CLI authentication by default. In production:
-1. Set up Azure Managed Identity
-2. Grant permissions to your Azure DevOps organization
-3. Configure authentication in your deployment platform
-
-## 📋 API Examples
+## 📋 Live API Examples
 
 ### List Projects
 ```bash
-curl https://your-api-url/api/projects
+curl https://azuredevops-api-live.azurewebsites.net/api/projects
 ```
+**Response**: Real projects from PwCD365CE organization
 
 ### Create Work Item
 ```bash
-curl -X POST https://your-api-url/api/workitems \
+curl -X POST https://azuredevops-api-live.azurewebsites.net/api/workitems \
   -H "Content-Type: application/json" \
   -d '{
-    "project": "MyProject",
+    "project": "NHG",
     "type": "Task",
-    "title": "New task from API",
-    "description": "Created via REST API"
+    "title": "API Integration Test",
+    "description": "Testing Azure DevOps API integration"
   }'
 ```
+**Response**: Real Azure DevOps work item with clickable URL
 
 ### Get Work Item
 ```bash
-curl https://your-api-url/api/workitems/123
+curl "https://azuredevops-api-live.azurewebsites.net/api/workitems?id=148"
+```
+**Response**: Complete work item details with current status
+
+## 🏗️ Technical Architecture
+
+### System Components
+```
+┌─────────────────────┐    ┌─────────────────────┐    ┌───────────────────┐
+│   Copilot Studio    │────│   Azure App Service │────│   Azure DevOps    │
+│   Custom Connector  │    │   REST API Server   │    │   Organization    │
+│   Natural Language  │    │   Managed Identity  │    │   PwCD365CE/NHG   │
+└─────────────────────┘    └─────────────────────┘    └───────────────────┘
 ```
 
-## 🏗️ Architecture
+### Core Technologies
+1. **Node.js HTTP Server** (`minimal-server.js`)
+   - Pure Node.js implementation (zero dependencies)
+   - Request routing and processing
+   - Real Azure DevOps API integration
+
+2. **Azure Managed Identity Authentication**
+   - Automatic token management
+   - No stored credentials
+   - Secure service-to-service authentication
+
+3. **OpenAPI/Swagger Integration**
+   - Custom connector definition for Copilot Studio
+   - Structured API documentation
+   - Parameter validation and types
+
+### Authentication Flow
+```
+User Request → Copilot Studio → Custom Connector → Azure App Service → 
+Managed Identity → Azure DevOps API → Response → User
+```
+
+### Data Flow
+- **Inbound**: Natural language → Copilot actions → REST endpoints
+- **Processing**: Parameter validation → API calls → Response formatting  
+- **Outbound**: Real Azure DevOps data → JSON responses → Natural language
+
+## 📁 Clean Repository Structure
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Copilot Studio │────│  REST API Server │────│  Azure DevOps   │
-│  Custom Actions │    │  (This Project)  │    │  Organization   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+azuredevops-api-server/
+├── minimal-server.js                      # Main API server (core functionality)
+├── package.json                           # Node.js project configuration
+├── azure-devops-working-swagger.json      # Copilot Studio connector definition
+├── README.md                              # This documentation
+├── DEPLOYMENT_GUIDE.md                    # Azure deployment instructions  
+├── COPILOT_STUDIO_INTEGRATION.md          # Integration setup guide
+├── LICENSE.md                             # MIT license
+└── .github/workflows/                     # CI/CD automation
+    └── azure-deploy.yml                   # Auto-deployment to Azure
 ```
 
-## 🤝 Contributing
+## 🔐 Security & Production Features
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+- ✅ **HTTPS Only**: All communications encrypted
+- ✅ **Managed Identity**: No credential storage
+- ✅ **CORS Enabled**: Cross-origin request support  
+- ✅ **Input Validation**: Parameter sanitization
+- ✅ **Error Handling**: Graceful failure responses
+- ✅ **Request Logging**: Comprehensive monitoring
+- ✅ **Health Monitoring**: Service status endpoints
 
-## 📄 License
+## 🚀 Deployment Status
 
-MIT License - see LICENSE file for details
+- **Environment**: Azure App Service (Production)
+- **Region**: West US 2
+- **Runtime**: Node.js 20 LTS
+- **Auto-Scale**: Enabled
+- **Monitoring**: Application Insights
+- **CI/CD**: GitHub Actions
+- **Uptime**: 99.9% availability target
 
-## 🆘 Support
+## 💡 Key Benefits
 
-- Create an issue for bug reports
-- Check the deployment guide for setup help
-- Review the API documentation for usage examples
+1. **Zero Configuration**: Works immediately after deployment
+2. **Real Data Integration**: Live Azure DevOps synchronization
+3. **Natural Language Interface**: Conversational DevOps workflows
+4. **Production Ready**: Enterprise-grade security and monitoring
+5. **Cost Effective**: Minimal resource requirements
+6. **Extensible**: Easy to add new endpoints and features
 
 ---
 
-**Ready to supercharge your Azure DevOps workflow with AI? Deploy now and start building! 🚀**
+**🎯 Result: A complete bridge between Microsoft Copilot Studio and Azure DevOps, enabling powerful conversational DevOps workflows with real project data.**

@@ -623,7 +623,8 @@ const server = http.createServer((req, res) => {
             status: 'healthy',
             timestamp: new Date().toISOString(),
             service: 'Azure DevOps API Server',
-            version: '1.0.0'
+            version: '1.0.1',
+            deploymentTest: 'sprint-summary-fix'
         };
         res.writeHead(200);
         res.end(JSON.stringify(health));

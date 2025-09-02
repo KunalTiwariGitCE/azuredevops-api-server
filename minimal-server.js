@@ -542,6 +542,36 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Debug endpoint to test WIQL directly
+    if (path === '/api/debug' && req.method === 'GET') {
+        getAccessToken()
+            .then(accessToken => {
+                const wiql = {
+                    query: "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = 'NHG'"
+                };
+                
+                console.log('Testing WIQL query directly...');
+                return callAzureDevOpsWiql(wiql, accessToken, 'NHG');
+            })
+            .then(result => {
+                res.writeHead(200);
+                res.end(JSON.stringify({
+                    success: true,
+                    result: result,
+                    message: 'WIQL test completed'
+                }));
+            })
+            .catch(error => {
+                res.writeHead(500);
+                res.end(JSON.stringify({
+                    success: false,
+                    error: error.message,
+                    message: 'WIQL test failed'
+                }));
+            });
+        return;
+    }
+
     // List projects
     if (path === '/api/projects' && req.method === 'GET') {
         // Try to get real data from Azure DevOps

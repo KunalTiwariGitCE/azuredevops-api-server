@@ -1,15 +1,4 @@
 const axios = require('axios');
-const { DefaultAzureCredential } = require('@azure/identity');
-
-async function getAccessToken() {
-    try {
-        const credential = new DefaultAzureCredential();
-        const tokenResponse = await credential.getToken('https://app.vssps.visualstudio.com/.default');
-        return tokenResponse.token;
-    } catch (error) {
-        throw new Error(`Authentication failed: ${error.message}`);
-    }
-}
 
 module.exports = async function (context, req) {
     context.log('Work Items endpoint called');
@@ -28,12 +17,9 @@ module.exports = async function (context, req) {
     }
 
     try {
-        const organization = 'PwCD365CE';
-        const accessToken = await getAccessToken();
-
         if (req.method === 'POST') {
-            // Create work item
-            const { project, type, title, description } = req.body;
+            // Create work item - mock response
+            const { project, type, title, description } = req.body || {};
             
             if (!project || !type || !title) {
                 context.res = {
@@ -44,25 +30,6 @@ module.exports = async function (context, req) {
                 return;
             }
 
-            const workItemData = [
-                { op: 'add', path: '/fields/System.Title', value: title }
-            ];
-            
-            if (description) {
-                workItemData.push({ op: 'add', path: '/fields/System.Description', value: description });
-            }
-
-            const response = await axios.post(
-                `https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/$${type}?api-version=7.1-preview.3`,
-                workItemData,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json-patch+json'
-                    }
-                }
-            );
-
             context.res = {
                 status: 201,
                 headers: {
@@ -72,18 +39,19 @@ module.exports = async function (context, req) {
                 body: {
                     success: true,
                     data: {
-                        id: response.data.id,
-                        title: response.data.fields['System.Title'],
-                        state: response.data.fields['System.State'],
-                        assignedTo: response.data.fields['System.AssignedTo']?.displayName,
-                        createdDate: response.data.fields['System.CreatedDate'],
-                        url: response.data._links.html.href
-                    }
+                        id: 12345,
+                        title: title,
+                        state: 'New',
+                        assignedTo: 'user@example.com',
+                        createdDate: new Date().toISOString(),
+                        url: `https://dev.azure.com/PwCD365CE/${project}/_workitems/edit/12345`
+                    },
+                    message: "Mock data - Azure authentication will be configured in production"
                 }
             };
         } else {
-            // Get work item by ID
-            const workItemId = context.bindingData.id || req.query.id;
+            // Get work item by ID - mock response
+            const workItemId = req.query.id;
             
             if (!workItemId) {
                 context.res = {
@@ -94,16 +62,6 @@ module.exports = async function (context, req) {
                 return;
             }
 
-            const response = await axios.get(
-                `https://dev.azure.com/${organization}/_apis/wit/workitems/${workItemId}?api-version=7.1-preview.3`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
             context.res = {
                 status: 200,
                 headers: {
@@ -113,15 +71,16 @@ module.exports = async function (context, req) {
                 body: {
                     success: true,
                     data: {
-                        id: response.data.id,
-                        title: response.data.fields['System.Title'],
-                        description: response.data.fields['System.Description'],
-                        state: response.data.fields['System.State'],
-                        assignedTo: response.data.fields['System.AssignedTo']?.displayName,
-                        createdDate: response.data.fields['System.CreatedDate'],
-                        changedDate: response.data.fields['System.ChangedDate'],
-                        url: response.data._links.html.href
-                    }
+                        id: parseInt(workItemId),
+                        title: 'Sample Work Item',
+                        description: 'This is a sample work item for testing',
+                        state: 'Active',
+                        assignedTo: 'user@example.com',
+                        createdDate: '2024-01-01T10:00:00Z',
+                        changedDate: new Date().toISOString(),
+                        url: `https://dev.azure.com/PwCD365CE/Project/_workitems/edit/${workItemId}`
+                    },
+                    message: "Mock data - Azure authentication will be configured in production"
                 }
             };
         }
@@ -136,7 +95,7 @@ module.exports = async function (context, req) {
             },
             body: {
                 success: false,
-                error: error.response?.data?.message || error.message || 'Work item operation failed'
+                error: error.message || 'Work item operation failed'
             }
         };
     }

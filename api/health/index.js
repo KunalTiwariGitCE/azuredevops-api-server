@@ -1,7 +1,18 @@
-const { DefaultAzureCredential } = require('@azure/identity');
-
 module.exports = async function (context, req) {
     context.log('Health check endpoint called');
+    
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        context.res = {
+            status: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            }
+        };
+        return;
+    }
     
     try {
         // Basic health check
@@ -12,10 +23,7 @@ module.exports = async function (context, req) {
             version: '1.0.0',
             endpoints: {
                 projects: '/api/projects',
-                workitems: '/api/workitems',
-                repositories: '/api/repositories',
-                builds: '/api/builds',
-                releases: '/api/releases'
+                workitems: '/api/workitems'
             }
         };
 

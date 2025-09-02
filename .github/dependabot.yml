@@ -3,7 +3,15 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "daily"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "[dependencies]"
+      interval: "monthly"
+    # Disable automatic updates for complex TypeScript packages
+    ignore:
+      - dependency-name: "@modelcontextprotocol/*"
+      - dependency-name: "@types/*"
+      - dependency-name: "typescript"
+      - dependency-name: "prettier"
+      - dependency-name: "eslint*"
+    # Only allow updates for our simple server dependencies
+    allow:
+      - dependency-name: "express"
+      - dependency-name: "cors"

@@ -10,11 +10,13 @@ async function getAccessToken() {
     return new Promise((resolve, reject) => {
         console.log('Attempting to get access token from Managed Identity...');
         
-        // Try Managed Identity endpoint first
+        // Try Managed Identity endpoint with Azure DevOps resource
+        const resource = encodeURIComponent('https://app.vssps.visualstudio.com');
+        console.log(`Requesting token for resource: https://app.vssps.visualstudio.com`);
         const options = {
             hostname: '169.254.169.254',
             port: 80,
-            path: '/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://app.vssps.visualstudio.com/',
+            path: `/metadata/identity/oauth2/token?api-version=2018-02-01&resource=${resource}`,
             method: 'GET',
             headers: {
                 'Metadata': 'true'
@@ -45,17 +47,77 @@ async function getAccessToken() {
 
         req.on('error', (error) => {
             console.log('Managed Identity request error:', error.message);
-            reject(new Error('Managed Identity endpoint not accessible - using mock data'));
+            console.log('Trying alternative authentication methods...');
+            tryAlternativeAuth(resolve, reject);
         });
 
         req.on('timeout', () => {
             console.log('Managed Identity request timeout');
             req.destroy();
-            reject(new Error('Token request timeout - using mock data'));
+            console.log('Trying alternative authentication methods...');
+            tryAlternativeAuth(resolve, reject);
         });
 
         req.end();
     });
+}
+
+// Alternative authentication methods
+function tryAlternativeAuth(resolve, reject) {
+    // Check if MSI_ENDPOINT and MSI_SECRET are available (alternative managed identity method)
+    const msiEndpoint = process.env.MSI_ENDPOINT;
+    const msiSecret = process.env.MSI_SECRET;
+    
+    if (msiEndpoint && msiSecret) {
+        console.log('Trying MSI_ENDPOINT authentication...');
+        const msiUrl = new URL(msiEndpoint);
+        const resource = encodeURIComponent('https://app.vssps.visualstudio.com');
+        
+        const options = {
+            hostname: msiUrl.hostname,
+            port: msiUrl.port || (msiUrl.protocol === 'https:' ? 443 : 80),
+            path: `${msiUrl.pathname}?resource=${resource}&api-version=2017-09-01`,
+            method: 'GET',
+            headers: {
+                'Secret': msiSecret
+            }
+        };
+
+        const protocol = msiUrl.protocol === 'https:' ? https : http;
+        const req = protocol.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                console.log(`MSI_ENDPOINT response: ${res.statusCode}, data: ${data}`);
+                if (res.statusCode === 200) {
+                    try {
+                        const token = JSON.parse(data);
+                        console.log('Successfully got access token from MSI_ENDPOINT');
+                        resolve(token.access_token);
+                        return;
+                    } catch (error) {
+                        console.log('Failed to parse MSI_ENDPOINT token response:', error.message);
+                    }
+                }
+                reject(new Error('All authentication methods failed - using mock data'));
+            });
+        });
+
+        req.on('error', (error) => {
+            console.log('MSI_ENDPOINT request error:', error.message);
+            reject(new Error('All authentication methods failed - using mock data'));
+        });
+
+        req.setTimeout(10000, () => {
+            req.destroy();
+            reject(new Error('All authentication methods timed out - using mock data'));
+        });
+
+        req.end();
+    } else {
+        console.log('No alternative authentication methods available');
+        reject(new Error('All authentication methods failed - using mock data'));
+    }
 }
 
 // Function to make Azure DevOps API calls

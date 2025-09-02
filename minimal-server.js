@@ -717,6 +717,38 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Test WIQL endpoint for debugging
+    if (path === '/api/test-wiql' && req.method === 'GET') {
+        const project = parsedUrl.query.project || 'NHG';
+        
+        getAccessToken()
+            .then(accessToken => {
+                // Test simple WIQL query
+                const wiql = {
+                    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${project}'`
+                };
+                
+                return callAzureDevOpsWiql(wiql, accessToken, project);
+            })
+            .then(wiqlResult => {
+                res.writeHead(200);
+                res.end(JSON.stringify({
+                    success: true,
+                    data: wiqlResult,
+                    message: `Test WIQL query for project: ${project}`
+                }));
+            })
+            .catch(error => {
+                res.writeHead(500);
+                res.end(JSON.stringify({
+                    success: false,
+                    error: error.message,
+                    message: 'Test WIQL query failed'
+                }));
+            });
+        return;
+    }
+
     // Sprint Summary Report
     if (path === '/api/sprint-summary' && req.method === 'GET') {
         const project = parsedUrl.query.project || 'NHG';

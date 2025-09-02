@@ -26,7 +26,7 @@ module.exports = async function (context, req) {
                 "description": "Connect to Azure DevOps for project and work item operations",
                 "version": "1.0"
             },
-            "host": "calm-pond-0d73b6c0f.2.azurestaticapps.net",
+            "host": "azuredevops-api-live.azurewebsites.net",
             "basePath": "/api",
             "schemes": ["https"],
             "consumes": ["application/json"],

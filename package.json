@@ -21,6 +21,7 @@
     "access": "public"
   },
   "scripts": {
+    "start": "node server.js",
     "preinstall": "npm config set registry https://registry.npmjs.org/",
     "prebuild": "node -p \"'export const packageVersion = ' + JSON.stringify(require('./package.json').version) + ';\\n'\" > src/version.ts && prettier --write src/version.ts",
     "validate-tools": "tsc --noEmit && node scripts/build-validate-tools.js",
@@ -28,7 +29,6 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspect": "ALLOWED_ORIGINS=http://127.0.0.1:6274 npx @modelcontextprotocol/inspector node dist/index.js",
-    "start": "node dist/comprehensive-api-server.js PwCD365CE",
     "start-http": "node -r tsconfig-paths/register dist/http-server.js",
     "start-rest": "node -r tsconfig-paths/register dist/rest-api-server.js",
     "start-comprehensive": "node -r tsconfig-paths/register dist/comprehensive-api-server.js",

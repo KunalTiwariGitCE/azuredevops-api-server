@@ -232,40 +232,25 @@ async function getAllProjectWorkItems(project, accessToken) {
     try {
         console.log(`Getting work items for project: ${project}`);
         
-        // Use a simple approach: get work items directly from project
-        const response = await callAzureDevOpsAPI(`wit/workitems?$expand=all&api-version=7.1-preview.3`, accessToken);
+        // Use WIQL to get work item IDs first
+        const wiql = {
+            query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${project}' ORDER BY [System.ChangedDate] DESC`
+        };
         
-        if (!response.value || response.value.length === 0) {
-            console.log(`No work items found using direct API for project: ${project}`);
-            
-            // Try alternative approach: get recent work items
-            try {
-                const wiql = {
-                    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${project}' ORDER BY [System.ChangedDate] DESC`
-                };
-                
-                const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken, project);
-                
-                if (wiqlResult.workItems && wiqlResult.workItems.length > 0) {
-                    console.log(`Found ${wiqlResult.workItems.length} work items via WIQL for project: ${project}`);
-                    
-                    // Get top 100 most recent work items
-                    const workItemIds = wiqlResult.workItems.slice(0, 100).map(wi => wi.id);
-                    const workItemDetails = await callAzureDevOpsAPI(`wit/workitems?ids=${workItemIds.join(',')}&$expand=all&api-version=7.1-preview.3`, accessToken);
-                    return workItemDetails.value || [];
-                } else {
-                    console.log('No work items found via WIQL either');
-                    return [];
-                }
-                
-            } catch (wiqlError) {
-                console.log('WIQL fallback also failed:', wiqlError.message);
-                return [];
-            }
+        const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken, project);
+        
+        if (!wiqlResult.workItems || wiqlResult.workItems.length === 0) {
+            console.log(`No work items found via WIQL for project: ${project}`);
+            return [];
         }
         
-        console.log(`Found ${response.value.length} work items directly for project: ${project}`);
-        return response.value;
+        console.log(`Found ${wiqlResult.workItems.length} work items via WIQL for project: ${project}`);
+        
+        // Get top 100 most recent work items details
+        const workItemIds = wiqlResult.workItems.slice(0, 100).map(wi => wi.id);
+        const workItemDetails = await callAzureDevOpsAPI(`wit/workitems?ids=${workItemIds.join(',')}&$expand=all&api-version=7.1-preview.3`, accessToken);
+        
+        return workItemDetails.value || [];
         
     } catch (error) {
         console.log('Error getting project work items:', error.message);

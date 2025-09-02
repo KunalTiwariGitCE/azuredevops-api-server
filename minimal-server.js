@@ -200,40 +200,66 @@ async function generateSprintSummary(project, sprintId, accessToken) {
     console.log(`Generating comprehensive sprint summary for ${project}`);
     
     try {
-        // Get iterations (sprints) 
-        const iterations = await callAzureDevOpsAPI(`work/teamsettings/iterations?api-version=7.1-preview.1`, accessToken);
+        // Get all work items for the project (simplified approach)
+        console.log(`Getting work items for project: ${project}`);
+        const allWorkItems = await getAllProjectWorkItems(project, accessToken);
         
-        let currentSprint;
-        if (sprintId) {
-            // Find specific sprint by ID
-            currentSprint = iterations.value.find(iteration => iteration.id === sprintId);
-        } else {
-            // Find current active sprint
-            const now = new Date();
-            currentSprint = iterations.value.find(iteration => {
-                const startDate = new Date(iteration.attributes.startDate);
-                const finishDate = new Date(iteration.attributes.finishDate);
-                return now >= startDate && now <= finishDate;
-            }) || iterations.value[iterations.value.length - 1]; // Fallback to latest sprint
-        }
+        // Create a mock sprint for current analysis
+        const mockSprint = {
+            name: "Current Work Items Analysis",
+            id: "current",
+            attributes: {
+                startDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks ago
+                finishDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()   // 1 week from now
+            }
+        };
         
-        if (!currentSprint) {
-            throw new Error('No active sprint found');
-        }
-        
-        console.log(`Analyzing sprint: ${currentSprint.name}`);
-        
-        // Get work items for the sprint
-        const sprintWorkItems = await getSprintWorkItems(project, currentSprint.id, accessToken);
+        console.log(`Analyzing ${allWorkItems.length} work items for ${project}`);
         
         // Analyze work items
-        const summary = analyzeSprintWorkItems(sprintWorkItems, currentSprint);
+        const summary = analyzeSprintWorkItems(allWorkItems, mockSprint);
         
         return summary;
         
     } catch (error) {
         console.log('Error generating sprint summary:', error.message);
         throw error;
+    }
+}
+
+// Function to get all work items for a project
+async function getAllProjectWorkItems(project, accessToken) {
+    try {
+        // Get work items for the project using WIQL
+        const wiql = {
+            query: `SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints], [Microsoft.VSTS.Common.Priority] FROM WorkItems WHERE [System.TeamProject] = '${project}' ORDER BY [System.WorkItemType], [System.State]`
+        };
+        
+        const wiqlResult = await callAzureDevOpsWiql(wiql, accessToken);
+        
+        if (wiqlResult.workItems.length === 0) {
+            console.log(`No work items found for project: ${project}`);
+            return [];
+        }
+        
+        console.log(`Found ${wiqlResult.workItems.length} work items for project: ${project}`);
+        
+        // Get detailed work item information (batch by 200 to avoid URL length limits)
+        const workItemIds = wiqlResult.workItems.map(wi => wi.id);
+        const batchSize = 200;
+        let allWorkItems = [];
+        
+        for (let i = 0; i < workItemIds.length; i += batchSize) {
+            const batchIds = workItemIds.slice(i, i + batchSize);
+            const workItemDetails = await callAzureDevOpsAPI(`wit/workitems?ids=${batchIds.join(',')}&$expand=all&api-version=7.1-preview.3`, accessToken);
+            allWorkItems = allWorkItems.concat(workItemDetails.value);
+        }
+        
+        return allWorkItems;
+        
+    } catch (error) {
+        console.log('Error getting project work items:', error.message);
+        return [];
     }
 }
 

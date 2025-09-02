@@ -144,10 +144,12 @@ async function createWorkItemInAzureDevOps(project, workItemType, title, descrip
         
         const postData = JSON.stringify(workItemData);
         
+        const encodedWorkItemType = encodeURIComponent(workItemType);
+        const encodedProject = encodeURIComponent(project);
         const options = {
             hostname: 'dev.azure.com',
             port: 443,
-            path: `/${organization}/${project}/_apis/wit/workitems/$${workItemType}?api-version=7.1-preview.3`,
+            path: `/${organization}/${encodedProject}/_apis/wit/workitems/$${encodedWorkItemType}?api-version=7.1-preview.3`,
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,

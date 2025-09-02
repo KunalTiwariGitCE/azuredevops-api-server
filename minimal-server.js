@@ -1,7 +1,100 @@
 const http = require('http');
+const https = require('https');
 const url = require('url');
 
 const port = process.env.PORT || 8080;
+const organization = 'PwCD365CE';
+
+// Function to get Azure access token using Managed Identity
+async function getAccessToken() {
+    return new Promise((resolve, reject) => {
+        // Try Managed Identity endpoint first
+        const options = {
+            hostname: '169.254.169.254',
+            port: 80,
+            path: '/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://app.vssps.visualstudio.com/',
+            method: 'GET',
+            headers: {
+                'Metadata': 'true'
+            },
+            timeout: 5000
+        };
+
+        const req = http.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 200) {
+                    try {
+                        const token = JSON.parse(data);
+                        resolve(token.access_token);
+                    } catch (error) {
+                        reject(new Error('Failed to parse token response'));
+                    }
+                } else {
+                    reject(new Error('Managed Identity not available - using mock data'));
+                }
+            });
+        });
+
+        req.on('error', () => {
+            // Fallback to mock data when not in Azure environment
+            reject(new Error('Not in Azure environment - using mock data'));
+        });
+
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Token request timeout - using mock data'));
+        });
+
+        req.end();
+    });
+}
+
+// Function to make Azure DevOps API calls
+async function callAzureDevOpsAPI(endpoint, accessToken) {
+    return new Promise((resolve, reject) => {
+        const options = {
+            hostname: 'dev.azure.com',
+            port: 443,
+            path: `/${organization}/_apis/${endpoint}`,
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Azure-DevOps-API-Server/1.0'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    try {
+                        const result = JSON.parse(data);
+                        resolve(result);
+                    } catch (error) {
+                        reject(new Error('Failed to parse API response'));
+                    }
+                } else {
+                    reject(new Error(`API call failed with status ${res.statusCode}`));
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            reject(error);
+        });
+
+        req.setTimeout(10000, () => {
+            req.destroy();
+            reject(new Error('API request timeout'));
+        });
+
+        req.end();
+    });
+}
 
 const server = http.createServer((req, res) => {
     // Enable CORS
@@ -37,27 +130,60 @@ const server = http.createServer((req, res) => {
 
     // List projects
     if (path === '/api/projects' && req.method === 'GET') {
-        const projects = [
-            {
-                id: "12345678-1234-1234-1234-123456789012",
-                name: "Sample Project",
-                description: "A sample Azure DevOps project for testing",
-                url: "https://dev.azure.com/PwCD365CE/SampleProject",
-                state: "wellFormed",
-                visibility: "private",
-                lastUpdateTime: new Date().toISOString()
-            }
-        ];
+        // Try to get real data from Azure DevOps
+        getAccessToken()
+            .then(accessToken => {
+                return callAzureDevOpsAPI('projects?api-version=7.1-preview.4', accessToken);
+            })
+            .then(apiResponse => {
+                // Transform real Azure DevOps data
+                const projects = apiResponse.value.map(project => ({
+                    id: project.id,
+                    name: project.name,
+                    description: project.description || `Azure DevOps project in ${organization}`,
+                    url: project.url,
+                    state: project.state,
+                    visibility: project.visibility,
+                    lastUpdateTime: project.lastUpdateTime
+                }));
 
-        const response = {
-            success: true,
-            data: projects,
-            count: projects.length,
-            message: "Mock data - deployment successful!"
-        };
+                const response = {
+                    success: true,
+                    data: projects,
+                    count: projects.length,
+                    message: `Real data from ${organization} organization`
+                };
 
-        res.writeHead(200);
-        res.end(JSON.stringify(response));
+                console.log(`Returned ${projects.length} real projects from ${organization}`);
+                res.writeHead(200);
+                res.end(JSON.stringify(response));
+            })
+            .catch(error => {
+                // Fallback to mock data if authentication fails
+                console.log('Using mock data:', error.message);
+                
+                const mockProjects = [
+                    {
+                        id: "12345678-1234-1234-1234-123456789012",
+                        name: "NHG (Mock)",
+                        description: "Mock project - Azure authentication needed for real data",
+                        url: `https://dev.azure.com/${organization}/NHG`,
+                        state: "wellFormed",
+                        visibility: "private",
+                        lastUpdateTime: new Date().toISOString()
+                    }
+                ];
+
+                const response = {
+                    success: true,
+                    data: mockProjects,
+                    count: mockProjects.length,
+                    message: `Mock data - ${error.message}. Need to configure Managed Identity for real data.`
+                };
+
+                res.writeHead(200);
+                res.end(JSON.stringify(response));
+            });
         return;
     }
 
